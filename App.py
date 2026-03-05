@@ -7,7 +7,22 @@ from safety import is_safe_for_public, is_safe_for_clinician
 from utils import call_llm, log_interaction
 
 
+
 st.set_page_config(page_title="MedAssist - Virtual Dr. Assistant", page_icon="🩺", layout="centered")
+
+
+
+st.markdown(
+    """
+    <style>
+    [data-testid="stAppViewContainer"] > .main {
+        background-color: lightblue; /* Replace with your color */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 st.title("🩺 MedAssist - Virtual Dr. Assistant")
 st.caption("Use case for AI as Health Educator and Clinician Assistant (Non-diagnostic)")
@@ -90,13 +105,33 @@ add_if_present("Ferritin", ferritin)
 # -------- Main question input --------
 st.subheader("Ask a Question")
 
+# default help text
 default_prompt_text = (
     "For example:\n"
     "- Public: Why is sleep important for teenagers?\n"
     "- Clinician: Summarize educational context for these labs and fatigue.\n"
 )
 
-question = st.text_area("Type your question here:", height=120, help=default_prompt_text)
+# initialize session state for question
+if "question" not in st.session_state:
+    st.session_state["question"] = ""
+
+question = st.text_area("Type your question here:", height=120, help=default_prompt_text, value=st.session_state["question"])
+# update session state whenever question changes
+st.session_state["question"] = question
+
+# optional image upload
+st.subheader("Optional: Upload an Image")
+st.caption("Images are sent to Gemini for analysis along with your question")
+upload_col1, upload_col2 = st.columns([1, 2])
+with upload_col1:
+    uploaded_image = st.file_uploader("Choose an image (JPG, PNG, etc.)", type=["jpg", "jpeg", "png", "gif", "bmp"])
+    if uploaded_image is not None:
+        st.session_state["uploaded_image"] = uploaded_image
+        st.success(f"✓ Image ready to send: {uploaded_image.name}")
+with upload_col2:
+    if "uploaded_image" in st.session_state and st.session_state["uploaded_image"]:
+        st.image(st.session_state["uploaded_image"], width=150, caption="Current image")
 
 
 # -------- Disclaimer --------
@@ -123,26 +158,73 @@ if st.button("Get Response"):
         else:
             safe = is_safe_for_clinician(question)
 
-        # Log the interaction (even if unsafe)
-        log_interaction(question=question, category=category, mode=mode, safe=safe)
+        # Build prompt according to mode (even if unsafe, so we can log later)
+        if mode == "General Public":
+            prompt = build_public_prompt(question, category, vitals)
+        else:
+            prompt = build_clinician_prompt(question, category, vitals)
 
         if not safe:
+            # log unsafe question with no response
+            log_interaction(question=question, category=category, mode=mode, safe=safe, image_uploaded="yes" if st.session_state.get("uploaded_image") else "no")
             st.error(
                 "This question may involve sensitive or unsafe content. "
                 "Please talk to a trusted adult, healthcare professional, or local emergency service "
                 "instead of relying on this tool."
             )
         else:
-            # Build prompt according to mode
-            if mode == "General Public":
-                prompt = build_public_prompt(question, category, vitals)
-            else:
-                prompt = build_clinician_prompt(question, category, vitals)
-
             with st.spinner("Thinking..."):
                 try:
-                    response = call_llm(prompt)
+                    # pass uploaded image if present
+                    uploaded_image = st.session_state.get("uploaded_image")
+                    response = call_llm(prompt, image=uploaded_image)
                     st.markdown("### Assistant Response")
                     st.write(response)
+
+                    # save for potential feedback and logging
+                    st.session_state["last_question"] = question
+                    st.session_state["last_category"] = category
+                    st.session_state["last_mode"] = mode
+                    st.session_state["last_safe"] = safe
+                    st.session_state["last_response"] = response
+                    st.session_state["last_image_uploaded"] = "yes" if uploaded_image else "no"
+
+                    # log the interaction including response and image info
+                    image_uploaded = "yes" if st.session_state.get("uploaded_image") else "no"
+                    log_interaction(
+                        question=question,
+                        category=category,
+                        mode=mode,
+                        safe=safe,
+                        response=response,
+                        image_uploaded=image_uploaded,
+                    )
                 except Exception as e:
                     st.error(f"Error while calling the AI model: {e}")
+
+# -------- Feedback section --------
+if st.session_state.get("last_response"):
+    st.markdown("---")
+    st.subheader("Feedback")
+
+    st.write("Was this answer helpful?")
+    feedback_rating = st.radio("", ["Yes", "No"], key="fb_rating")
+    feedback_comments = st.text_area("Additional comments (optional)", height=80, key="fb_comments")
+
+    if st.button("Submit Feedback", key="submit_feedback"):
+        log_interaction(
+            question=st.session_state.get("last_question", ""),
+            category=st.session_state.get("last_category", ""),
+            mode=st.session_state.get("last_mode", ""),
+            safe=st.session_state.get("last_safe", None),
+            response=st.session_state.get("last_response", ""),
+            rating=feedback_rating,
+            comments=feedback_comments,
+            image_uploaded=st.session_state.get("last_image_uploaded", "no"),
+        )
+        st.success("Thanks for your feedback!")
+        # clear feedback-related session state to avoid duplicate logs
+        for key in ["last_question", "last_category", "last_mode", "last_safe", "last_response"]:
+            if key in st.session_state:
+                del st.session_state[key]
+
