@@ -6,11 +6,10 @@ from pandas import pandas as pd
 import base64
 
 # Configure Gemini API with key from environment
-# AIzaSyAkmePSvr_iBdY-XbGvkUEIz0dkww3ZvGg
-# export GOOGLE_API_KEY="AIzaSyAkmePSvr_iBdY-XbGvkUEIz0dkww3ZvGg"
+
 # streamlit run App.py
-# api_key = os.getenv("GOOGLE_API_KEY")
-api_key = "AIzaSyAkmePSvr_iBdY-XbGvkUEIz0dkww3ZvGg"
+api_key = os.getenv("GOOGLE_API_KEY")
+
 if not api_key:
     raise ValueError(
         "GOOGLE_API_KEY environment variable not set. "
