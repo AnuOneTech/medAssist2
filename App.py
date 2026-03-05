@@ -1,18 +1,6 @@
 # app.py
 
 import streamlit as st
-
-st.markdown(
-    """
-    <style>
-    [data-testid="stAppViewContainer"] > .main {
-        background-color: lightblue; /* Replace with your color */
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 from prompts import build_public_prompt, build_clinician_prompt
 from safety import is_safe_for_public, is_safe_for_clinician
 from utils import call_llm, log_interaction
