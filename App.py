@@ -2,6 +2,17 @@
 
 import streamlit as st
 
+st.markdown(
+    """
+    <style>
+    [data-testid="stAppViewContainer"] > .main {
+        background-color: lightblue; /* Replace with your color */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 from prompts import build_public_prompt, build_clinician_prompt
 from safety import is_safe_for_public, is_safe_for_clinician
 from utils import call_llm, log_interaction
@@ -11,12 +22,15 @@ from utils import call_llm, log_interaction
 st.set_page_config(page_title="MedAssist - Virtual Dr. Assistant", page_icon="🩺", layout="centered")
 
 
-
 st.markdown(
     """
     <style>
     [data-testid="stAppViewContainer"] > .main {
-        background-color: lightblue; /* Replace with your color */
+        background-color: #fafafa;        /* light grey */
+        background-color: rgb(10,34,64);  /* navy */
+        background-color: #ffefd5;        /* papayawhip */
+        background-image: url('https://www.transparenttextures.com/patterns/blueprint.png'); /* Optional: add a subtle pattern */
+        background-size: cover;
     }
     </style>
     """,
@@ -43,7 +57,7 @@ category = st.sidebar.selectbox(
 
 
 # -------- Optional vitals & body metrics --------
-st.sidebar.header("Optional Vitals & Body Metrics")
+st.sidebar.header("Optional Vitals & Body Metrics:")
 
 heart_rate = st.sidebar.text_input("Heart Rate (bpm) — optional")
 temperature = st.sidebar.text_input("Body Temperature (°F) — optional")
