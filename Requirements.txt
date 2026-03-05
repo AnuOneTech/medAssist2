@@ -1,4 +1,0 @@
-groq
-streamlit
-pandas
-google-generativeai
