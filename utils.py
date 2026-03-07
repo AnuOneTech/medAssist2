@@ -18,53 +18,31 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 def call_llm(prompt, image=None):
-    """
-    Call Google Gemini with text and optional image support.
+    # Use a valid model ID
+    model = genai.GenerativeModel("gemini-3-flash-preview")
     
-    Args:
-        prompt (str): The text prompt
-        image: Optional Streamlit UploadedFile object
-    
-    Returns:
-        str: Response from Gemini
-    """
-    # Initialize model (use available Gemini version)
-    # 'gemini-1.5' is currently supported; adjust if necessary.
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    
-    # Build content list
     content = [prompt]
     
-    # Add image if provided
     if image is not None:
         try:
-            # Read image and encode as base64
+            image.seek(0)
             image_data = image.read()
-            image_b64 = base64.b64encode(image_data).decode('utf-8')
             
-            # Determine media type
-            media_type = "image/jpeg"
-            if image.type == "image/png":
-                media_type = "image/png"
-            elif image.type in ["image/gif", "image/bmp"]:
-                media_type = image.type
-            
-            # Create image part for Gemini
-            from google.generativeai.types import HarmCategory, HarmBlockThreshold
-            image_part = genai.types.Part.from_data(
-                data=image_data,
-                mime_type=media_type
-            )
-            content.insert(0, image_part)
+            # The SDK can often wrap this automatically if you pass a dict
+            image_part = {
+                "mime_type": image.type, # Streamlit provides this automatically
+                "data": image_data
+            }
+            content.append(image_part)
         except Exception as e:
             print(f"Warning: Could not process image: {e}")
     
-    # Call Gemini API
     try:
+        # Use stream=False if you want the whole response at once
         response = model.generate_content(content)
         return response.text
     except Exception as e:
-        raise Exception(f"Gemini API error: {str(e)}")
+        return f"Gemini API error: {str(e)}"
 
 def log_interaction(
     question: str,
